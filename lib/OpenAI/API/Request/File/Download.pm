@@ -1,4 +1,4 @@
-package OpenAI::API::Request::File::Retrieve;
+package OpenAI::API::Request::File::Download;
 
 use strict;
 use warnings;
@@ -13,9 +13,10 @@ extends 'OpenAI::API::Request';
 
 has file_id => ( is => 'ro', isa => Str, required => 1 );
 
-sub endpoint {
-    my ($self) = @_;
-    return 'files/' . $self->{file_id};
+sub endpoint { 
+    my $self = shift;
+
+    return 'files/' . $self->file_id . '/content';
 }
 
 sub method { 'GET' }

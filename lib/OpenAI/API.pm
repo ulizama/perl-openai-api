@@ -9,16 +9,26 @@ our $VERSION = 0.37;
 
 BEGIN {
     my %module_dispatcher = (
-        chat           => 'OpenAI::API::Request::Chat',
-        completions    => 'OpenAI::API::Request::Completion',
-        edits          => 'OpenAI::API::Request::Edit',
-        embeddings     => 'OpenAI::API::Request::Embedding',
-        files          => 'OpenAI::API::Request::File::List',
-        file_retrieve  => 'OpenAI::API::Request::File::Retrieve',
-        image_create   => 'OpenAI::API::Request::Image::Generation',
-        models         => 'OpenAI::API::Request::Model::List',
-        model_retrieve => 'OpenAI::API::Request::Model::Retrieve',
-        moderations    => 'OpenAI::API::Request::Moderation',
+        chat             => 'OpenAI::API::Request::Chat',
+        completions      => 'OpenAI::API::Request::Completion',
+        edits            => 'OpenAI::API::Request::Edit',
+        embeddings       => 'OpenAI::API::Request::Embedding',
+        files            => 'OpenAI::API::Request::File::List',
+        file_retrieve    => 'OpenAI::API::Request::File::Retrieve',
+        file_download    => 'OpenAI::API::Request::File::Download',
+        image_create     => 'OpenAI::API::Request::Image::Generation',
+        models           => 'OpenAI::API::Request::Model::List',
+        model_retrieve   => 'OpenAI::API::Request::Model::Retrieve',
+        moderations      => 'OpenAI::API::Request::Moderation',
+        assistant        => 'OpenAI::API::Request::Assistant',
+        assistant_create => 'OpenAI::API::Request::Assistant::Create',
+        assistant_modify => 'OpenAI::API::Request::Assistant::Modify',
+        thread_create    => 'OpenAI::API::Request::Thread::Create',
+        messages         => 'OpenAI::API::Request::Thread::Messages',
+        message_create   => 'OpenAI::API::Request::Message::Create',
+        run              => 'OpenAI::API::Request::Run',
+        run_create       => 'OpenAI::API::Request::Run::Create',
+        run_tool_output  => 'OpenAI::API::Request::Run::ToolOutput',
     );
 
     for my $sub_name ( keys %module_dispatcher ) {

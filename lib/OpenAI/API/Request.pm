@@ -4,6 +4,7 @@ use IO::Async::Loop;
 use IO::Async::Future;
 use JSON::MaybeXS;
 use LWP::UserAgent;
+use URI;
 
 use Moo;
 use strictures 2;
@@ -57,6 +58,14 @@ sub method {
     die "Must be implemented";
 }
 
+sub beta {
+    '';
+}
+
+sub params_cleanup {
+    my ($self, $request_params) = @_;
+}
+
 sub _parse_response {
     my ( $self, $res ) = @_;
 
@@ -68,6 +77,12 @@ sub _parse_response {
     # Require the OpenAI::API::Response module
     eval "require $response_module" or die $@;
 
+    if ($self->endpoint =~ /files\/.*content$/) {
+        return $response_module->new({
+            contents => $res->content
+        });
+    }
+
     # Return the OpenAI::API::Response object
     my $decoded_res = decode_json( $res->decoded_content );
     return $response_module->new($decoded_res);
@@ -75,11 +90,28 @@ sub _parse_response {
 
 sub request_params {
     my ($self) = @_;
-    my %request_params = %{$self};
-    delete $request_params{config};
-    delete $request_params{user_agent};
-    delete $request_params{event_loop};
-    return \%request_params;
+    my $request_params = { %{$self} };
+    delete $request_params->{config};
+    delete $request_params->{user_agent};
+    delete $request_params->{event_loop};
+    $self->params_cleanup($request_params);
+
+    # todo: improve this, there are instances in which we might want to send and empty array to the api
+    for my $key (keys %{$request_params}) {
+        if (
+            (
+                ref $request_params->{$key} eq 'ARRAY'
+                && !scalar(@{ $request_params->{$key} })
+            )
+            || (ref $request_params->{$key} eq 'HASH'
+                && !scalar(@{ $request_params->{$key} }))
+          )
+        {
+            delete $request_params->{$key};
+        }
+    }
+
+    return $request_params;
 }
 
 sub send {
@@ -106,7 +138,7 @@ sub send {
 sub _get {
     my ($self) = @_;
 
-    my $req = $self->_create_request('GET');
+    my $req = $self->_create_request('GET', $self->request_params());
     return $self->_send_request($req);
 }
 
@@ -143,7 +175,7 @@ sub send_async {
 sub _get_async {
     my ($self) = @_;
 
-    my $req = $self->_create_request('GET');
+    my $req = $self->_create_request('GET', $self->request_params());
     return $self->_send_request_async($req);
 }
 
@@ -157,8 +189,21 @@ sub _post_async {
 sub _create_request {
     my ( $self, $method, $content ) = @_;
 
+    my $url = $self->config->api_base . "/" . $self->endpoint;
+
+    if ($method eq 'GET') {
+        my $uri = URI->new($url);
+        $uri->query_form($content);
+
+        if ($uri->query) {
+            $url .= '?' . $uri->query;
+        }
+
+        $content = undef;
+    }
+
     my $req = HTTP::Request->new(
-        $method => $self->config->api_base . "/" . $self->endpoint,
+        $method => $url,
         $self->_request_headers(),
         $content,
     );
@@ -169,10 +214,16 @@ sub _create_request {
 sub _request_headers {
     my ($self) = @_;
 
-    return [
+    my @headers = (
         'Content-Type'  => 'application/json',
         'Authorization' => 'Bearer ' . $self->config->api_key,
-    ];
+    );
+    
+    if ( my $beta = $self->beta ) {
+        push @headers, 'OpenAI-Beta' => $beta;
+    }
+
+    return \@headers;
 }
 
 sub _send_request {
@@ -188,7 +239,7 @@ sub _send_request {
 
     if ( !$res->is_success ) {
         OpenAI::API::Error->throw(
-            message  => "Error: '@{[ $res->status_line ]}'",
+            message  => "Error: '@{[ $res->status_line ]}'\n@{[ $res->content ]}",
             request  => $req,
             response => $res,
         );
